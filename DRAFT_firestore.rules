@@ -1,0 +1,196 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Default-Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Hardened Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Entity Validation Helpers
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'createdAt', 'updatedAt'])
+        && data.uid is string && data.uid == userId && data.uid.size() <= 128
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 600))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserSettings(data, userId) {
+      return data.keys().hasAll([
+          'userId', 'departureDate', 'departureTime', 'bikeType', 'speedKmH',
+          'breakMinutes', 'realisticPace', 'colorTheme', 'bgMode', 'weatherProvider', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'userId', 'departureDate', 'departureTime', 'bikeType', 'speedKmH',
+          'breakMinutes', 'realisticPace', 'colorTheme', 'bgMode', 'weatherProvider', 'updatedAt'
+        ])
+        && data.userId is string && data.userId == userId && data.userId.size() <= 128
+        && data.departureDate is string && data.departureDate.size() == 10 && data.departureDate.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.departureTime is string && data.departureTime.size() == 5 && data.departureTime.matches('^\\d{2}:\\d{2}$')
+        && data.bikeType is string && data.bikeType.size() <= 20 && data.bikeType in ['road', 'gravel', 'mtb', 'touring', 'ebike']
+        && (data.speedKmH is int || data.speedKmH is float) && data.speedKmH >= 8 && data.speedKmH <= 45
+        && (data.breakMinutes is int || data.breakMinutes is float) && data.breakMinutes >= 0 && data.breakMinutes <= 240
+        && data.realisticPace is bool
+        && data.colorTheme is string && data.colorTheme.size() <= 20 && data.colorTheme in ['sky', 'emerald', 'amber', 'violet', 'rose', 'teal', 'indigo', 'orange']
+        && data.bgMode is string && data.bgMode.size() <= 20 && data.bgMode in ['light', 'tinted', 'dark', 'midnight']
+        && data.weatherProvider is string && data.weatherProvider.size() <= 30 && data.weatherProvider in ['open_meteo_auto', 'ecmwf', 'dwd_icon', 'met_no', 'noaa_gfs']
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSavedRoute(data, userId, routeId) {
+      return data.keys().hasAll([
+          'id', 'userId', 'name', 'points', 'totalDistance',
+          'elevationGain', 'elevationLoss', 'minElevation', 'maxElevation',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'userId', 'name', 'points', 'totalDistance',
+          'elevationGain', 'elevationLoss', 'minElevation', 'maxElevation',
+          'createdAtLabel', 'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == routeId && data.id.size() <= 128
+        && data.userId is string && data.userId == userId && data.userId.size() <= 128
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 160
+        && data.points is list && data.points.size() >= 2 && data.points.size() <= 2500
+        && data.points[0] is map
+        && (data.totalDistance is int || data.totalDistance is float) && data.totalDistance >= 0 && data.totalDistance <= 50000
+        && (data.elevationGain is int || data.elevationGain is float) && data.elevationGain >= 0 && data.elevationGain <= 100000
+        && (data.elevationLoss is int || data.elevationLoss is float) && data.elevationLoss >= 0 && data.elevationLoss <= 100000
+        && (data.minElevation is int || data.minElevation is float) && data.minElevation >= -1000 && data.minElevation <= 9000
+        && (data.maxElevation is int || data.maxElevation is float) && data.maxElevation >= -1000 && data.maxElevation <= 9000
+        && (!('createdAtLabel' in data) || (data.createdAtLabel is string && data.createdAtLabel.size() <= 40))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidGearChecklist(data, userId) {
+      return data.keys().hasAll(['userId', 'items', 'updatedAt'])
+        && data.keys().hasOnly(['userId', 'items', 'updatedAt'])
+        && data.userId is string && data.userId == userId && data.userId.size() <= 128
+        && data.items is list && data.items.size() <= 100
+        && (data.items.size() == 0 || data.items[0] is map)
+        && data.updatedAt is timestamp;
+    }
+
+    // Boot-time connection check document
+    match /test/connection {
+      allow get: if isSignedIn();
+      allow list, create, update, delete: if false;
+    }
+
+    // User profile (PII restricted strictly to owner)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'displayName', 'photoURL', 'updatedAt']);
+      allow delete: if isValidId(userId) && isOwner(userId);
+
+      // User settings subcollection (Master Gate verifies parent user exists)
+      match /settings/{settingId} {
+        allow get: if isValidId(userId) && isValidId(settingId) && isOwner(userId)
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow list: if false;
+        allow create: if isValidId(userId) && settingId == 'preferences'
+          && isOwner(userId)
+          && isValidUserSettings(incoming(), userId)
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow update: if isValidId(userId) && settingId == 'preferences'
+          && isOwner(userId)
+          && isValidUserSettings(incoming(), userId)
+          && incoming().userId == existing().userId
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'departureDate', 'departureTime', 'bikeType', 'speedKmH',
+            'breakMinutes', 'realisticPace', 'colorTheme', 'bgMode', 'weatherProvider', 'updatedAt'
+          ])
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow delete: if isValidId(userId) && isValidId(settingId) && isOwner(userId);
+      }
+
+      // Saved GPX routes subcollection
+      match /routes/{routeId} {
+        allow get: if isValidId(userId) && isValidId(routeId) && isOwner(userId)
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow list: if isValidId(userId) && isOwner(userId)
+          && resource.data.userId == request.auth.uid;
+        allow create: if isValidId(userId) && isValidId(routeId)
+          && isOwner(userId)
+          && isValidSavedRoute(incoming(), userId, routeId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow update: if isValidId(userId) && isValidId(routeId)
+          && isOwner(userId)
+          && isValidSavedRoute(incoming(), userId, routeId)
+          && incoming().id == existing().id
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'points', 'totalDistance', 'elevationGain', 'elevationLoss',
+            'minElevation', 'maxElevation', 'createdAtLabel', 'updatedAt'
+          ])
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow delete: if isValidId(userId) && isValidId(routeId) && isOwner(userId)
+          && exists(/databases/$(database)/documents/users/$(userId));
+      }
+
+      // User gear checklist subcollection
+      match /gear/{gearDocId} {
+        allow get: if isValidId(userId) && isValidId(gearDocId) && isOwner(userId)
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow list: if false;
+        allow create: if isValidId(userId) && gearDocId == 'checklist'
+          && isOwner(userId)
+          && isValidGearChecklist(incoming(), userId)
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow update: if isValidId(userId) && gearDocId == 'checklist'
+          && isOwner(userId)
+          && isValidGearChecklist(incoming(), userId)
+          && incoming().userId == existing().userId
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['items', 'updatedAt'])
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow delete: if isValidId(userId) && isValidId(gearDocId) && isOwner(userId);
+      }
+    }
+  }
+}

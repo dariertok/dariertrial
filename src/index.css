@@ -1,0 +1,65 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+:root {
+  --accent: #0284c7;
+  --accent-hover: #0369a1;
+  --accent-secondary: #2563eb;
+  --accent-soft: #e0f2fe;
+  --bg-canvas: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-subtle: #f1f5f9;
+  --border-subtle: #e2e8f0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-canvas);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.surface-canvas {
+  background-color: var(--bg-canvas);
+}
+
+.surface-card {
+  background-color: var(--bg-card);
+  border-color: var(--border-subtle);
+}
+
+.surface-subtle {
+  background-color: var(--bg-subtle);
+}
+
+.border-theme {
+  border-color: var(--border-subtle);
+}
+
+.text-accent {
+  color: var(--accent);
+}
+
+.bg-accent {
+  background-color: var(--accent);
+}
+
+.bg-accent:hover {
+  background-color: var(--accent-hover);
+}
+
+.bg-accent-soft {
+  background-color: var(--accent-soft);
+}
+
+.accent-gradient {
+  background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+}
+
+.leaflet-dark-tiles .leaflet-tile-pane {
+  filter: invert(100%) hue-rotate(180deg) brightness(94%) contrast(90%);
+}

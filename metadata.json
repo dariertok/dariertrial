@@ -1,0 +1,6 @@
+{
+  "name": "DarierTrial Pro",
+  "description": "Interactive GPX route weather planner with wind, temperature, precipitation forecasts, departure time and speed simulation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

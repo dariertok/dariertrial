@@ -1,0 +1,217 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private user account profile for SkyTrail synced via Google Sign-In.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified Google account email address."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name shown in the application header."
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Optional Google profile photo URL."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server last update timestamp."
+        }
+      },
+      "required": ["uid", "email", "displayName", "createdAt", "updatedAt"]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "All SkyTrail trip, bike, weather provider, and appearance settings.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "departureDate": {
+          "type": "string",
+          "description": "Planned departure date YYYY-MM-DD."
+        },
+        "departureTime": {
+          "type": "string",
+          "description": "Planned departure time HH:MM."
+        },
+        "bikeType": {
+          "type": "string",
+          "enum": ["road", "gravel", "mtb", "touring", "ebike"],
+          "description": "Selected bicycle category."
+        },
+        "speedKmH": {
+          "type": "number",
+          "description": "Target cruising speed in km/h."
+        },
+        "breakMinutes": {
+          "type": "number",
+          "description": "Total break time in minutes."
+        },
+        "realisticPace": {
+          "type": "boolean",
+          "description": "Whether slope and wind affect segment pacing."
+        },
+        "colorTheme": {
+          "type": "string",
+          "enum": ["sky", "emerald", "amber", "violet", "rose", "teal", "indigo", "orange"],
+          "description": "UI accent color theme."
+        },
+        "bgMode": {
+          "type": "string",
+          "enum": ["light", "tinted", "dark", "midnight"],
+          "description": "Application background mode."
+        },
+        "weatherProvider": {
+          "type": "string",
+          "enum": ["open_meteo_auto", "ecmwf", "dwd_icon", "met_no", "noaa_gfs"],
+          "description": "Active weather forecast model."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "userId",
+        "departureDate",
+        "departureTime",
+        "bikeType",
+        "speedKmH",
+        "breakMinutes",
+        "realisticPace",
+        "colorTheme",
+        "bgMode",
+        "weatherProvider",
+        "updatedAt"
+      ]
+    },
+    "SavedRoute": {
+      "title": "SavedRoute",
+      "description": "Saved cycling GPX route with geometry points and elevation summary.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Route document identifier."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "name": {
+          "type": "string",
+          "description": "User-assigned route title."
+        },
+        "points": {
+          "type": "array",
+          "description": "Ordered track points with lat, lon, elevation, distanceFromStart."
+        },
+        "totalDistance": {
+          "type": "number",
+          "description": "Total route distance in km."
+        },
+        "elevationGain": {
+          "type": "number",
+          "description": "Total ascent in meters."
+        },
+        "elevationLoss": {
+          "type": "number",
+          "description": "Total descent in meters."
+        },
+        "minElevation": {
+          "type": "number",
+          "description": "Minimum elevation in meters."
+        },
+        "maxElevation": {
+          "type": "number",
+          "description": "Maximum elevation in meters."
+        },
+        "createdAtLabel": {
+          "type": "string",
+          "description": "Formatted Polish creation date label."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "points",
+        "totalDistance",
+        "elevationGain",
+        "elevationLoss",
+        "minElevation",
+        "maxElevation",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "GearChecklist": {
+      "title": "GearChecklist",
+      "description": "User gear checklist state and custom items.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "items": {
+          "type": "array",
+          "description": "Saved custom gear items and checked flags."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": ["userId", "items", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Authenticated user profile document."
+    },
+    "/users/{userId}/settings/{settingId}": {
+      "schema": "UserSettings",
+      "description": "User trip, bike, weather provider, and appearance settings."
+    },
+    "/users/{userId}/routes/{routeId}": {
+      "schema": "SavedRoute",
+      "description": "Saved cycling GPX routes belonging to the user."
+    },
+    "/users/{userId}/gear/{gearDocId}": {
+      "schema": "GearChecklist",
+      "description": "Saved custom gear items and checklist state for the user."
+    }
+  }
+}
